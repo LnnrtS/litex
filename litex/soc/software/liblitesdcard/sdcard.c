@@ -23,6 +23,7 @@
 
 // #define SDCARD_DEBUG
 // #define SDCARD_CMD23_SUPPORT /* SET_BLOCK_COUNT */
+// #define SDCARD_ACMD23_SUPPORT /* SET_WR_BLK_ERASE_COUNT */
 #define SDCARD_CMD18_SUPPORT /* READ_MULTIPLE_BLOCK */
 #define SDCARD_CMD25_SUPPORT /* WRITE_MULTIPLE_BLOCK */
 
@@ -300,6 +301,17 @@ int sdcard_set_block_count(unsigned int blockcnt) {
 	return sdcard_send_command(blockcnt, 23, SDCARD_CTRL_RESPONSE_SHORT | SDCARD_CTRL_RESPONSE_CRC);
 }
 
+int sdcard_set_wr_blk_erase_count(uint16_t rca, unsigned int blckcnt)
+{
+	sdcard_app_cmd(rca);
+
+	#ifdef SDCARD_DEBUG
+	printf("ACMD23: SET_WR_BLK_ERASE_COUNT\n");
+	#endif
+
+	return sdcard_send_command(blckcnt, 23, SDCARD_CTRL_RESPONSE_SHORT | SDCARD_CTRL_RESPONSE_CRC);
+}
+
 uint16_t sdcard_decode_rca(void) {
 	uint32_t r[SD_CMD_RESPONSE_SIZE/4];
 	csr_rd_buf_uint32(CSR_SDCARD_CORE_CMD_RESPONSE_ADDR,
@@ -539,6 +551,11 @@ void sdcard_write(uint32_t block, uint32_t count, uint8_t* buf)
 #ifdef SDCARD_CMD23_SUPPORT
 		sdcard_set_block_count(nblocks);
 #endif
+
+#ifdef SDCARD_ACMD23_SUPPORT
+		sdcard_set_wr_blk_erase_count(global_rca, nblocks);
+#endif
+		
 		if (nblocks > 1)
 			sdcard_write_multiple_block(block, nblocks);
 		else

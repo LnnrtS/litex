@@ -36,6 +36,8 @@
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
+uint32_t global_rca;
+
 /*-----------------------------------------------------------------------*/
 /* SDCard command helpers                                                */
 /*-----------------------------------------------------------------------*/
@@ -419,6 +421,9 @@ int sdcard_init(void) {
 	if (sdcard_set_relative_address() != SD_OK)
 		return 0;
 	rca = sdcard_decode_rca();
+
+	// store rca
+	global_rca = rca;
 
 	/* Set CID */
 	if (sdcard_send_cid(rca) != SD_OK)

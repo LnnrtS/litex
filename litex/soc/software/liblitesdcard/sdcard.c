@@ -21,8 +21,8 @@
 
 #ifdef CSR_SDCARD_BASE
 
-//#define SDCARD_DEBUG
-//#define SDCARD_CMD23_SUPPORT /* SET_BLOCK_COUNT */
+// #define SDCARD_DEBUG
+// #define SDCARD_CMD23_SUPPORT /* SET_BLOCK_COUNT */
 #define SDCARD_CMD18_SUPPORT /* READ_MULTIPLE_BLOCK */
 #define SDCARD_CMD25_SUPPORT /* WRITE_MULTIPLE_BLOCK */
 
@@ -492,9 +492,11 @@ void sdcard_read(uint32_t block, uint32_t count, uint8_t* buf)
 		/* Wait for DMA Writer to complete */
 		while ((sdcard_block2mem_dma_done_read() & 0x1) == 0);
 
+#ifndef SDCARD_CMD23_SUPPORT
 		/* Stop transmission (Only for multiple block reads) */
 		if (nblocks > 1)
 			sdcard_stop_transmission();
+#endif
 
 		/* Update Block/Buffer/Count */
 		block += nblocks;
@@ -537,9 +539,11 @@ void sdcard_write(uint32_t block, uint32_t count, uint8_t* buf)
 		else
 			sdcard_write_single_block(block);
 
+#ifndef SDCARD_CMD23_SUPPORT
 		/* Stop transmission (Only for multiple block writes) */
 		if (nblocks > 1)
 			sdcard_stop_transmission();
+#endif
 
 		/* Wait for DMA Reader to complete */
 		while ((sdcard_mem2block_dma_done_read() & 0x1) == 0);

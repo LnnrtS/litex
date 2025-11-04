@@ -406,6 +406,13 @@ class Builder:
                     if not getattr(self.soc, "rom").mem.init:
                         self._initialize_rom_software()
 
+        # Generate SoC Documentation.
+        if self.generate_doc:
+            from litex.soc.doc import generate_docs
+            doc_dir = os.path.join(self.output_dir, "doc")
+            generate_docs(self.soc, doc_dir)
+            os.system(f"sphinx-build -M html {doc_dir} {doc_dir}/_build")
+
         # Translate compile_gateware to run.
         if "run" not in kwargs:
             kwargs["run"] = self.compile_gateware
@@ -415,13 +422,6 @@ class Builder:
         # Build SoC and pass Verilog Name Space to do_exit.
         vns = self.soc.build(build_dir=self.gateware_dir, **kwargs)
         self.soc.do_exit(vns=vns)
-
-        # Generate SoC Documentation.
-        if self.generate_doc:
-            from litex.soc.doc import generate_docs
-            doc_dir = os.path.join(self.output_dir, "doc")
-            generate_docs(self.soc, doc_dir)
-            os.system(f"sphinx-build -M html {doc_dir} {doc_dir}/_build")
 
         return vns
 

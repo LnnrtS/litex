@@ -168,6 +168,9 @@ class FT245PHYSynchronous(LiteXModule):
             NextState("READ")
         )
 
+        self.usb_clk = Signal()
+        self.comb += self.usb_clk.eq(ClockSignal("usb"))
+
     def get_litescope_probes(self):
         return  [
             # Physical.
@@ -179,6 +182,7 @@ class FT245PHYSynchronous(LiteXModule):
             self.data_w,
             self.data_r,
             self.data_oe,
+            self.usb_clk,
 
             # Core.
             self.wants_write,

@@ -14,7 +14,7 @@ from litex.gen import *
 
 from litex.soc.interconnect import stream
 
-from litex.build.io import SDRTristate
+from migen import TSTriple
 
 # Layout/Helpers -----------------------------------------------------------------------------------
 
@@ -104,23 +104,23 @@ class FT245PHYSynchronous(LiteXModule):
         self.data_w  = data_w  = Signal(dw)
         self.data_r  = data_r  = Signal(dw)
         self.data_oe = data_oe = Signal()
-        for i in range(dw):
-            self.specials += SDRTristate(
-                io  = pads.data[i],
-                o   = data_w[i],
-                oe  = data_oe,
-                i   = data_r[i],
-                clk = ClockSignal("usb")
-            )
-        if hasattr(pads, "be"):
-            for i in range(dw//8):
-                self.specials += SDRTristate(
-                    io  = pads.be[i],
-                    o   = Signal(reset=0b1),
-                    oe  = data_oe,
-                    i   = Signal(),
-                    clk = ClockSignal("usb")
-                )
+
+        ts_data = TSTriple(dw)
+        self.comb += [
+            ts_data.o.eq(data_w),
+            data_r.eq(ts_data.i),
+            ts_data.oe.eq(data_oe),
+        ]
+        self.specials += ts_data.get_tristate(pads.data)
+
+        ts_be = TSTriple(dw//8)
+        self.comb += [
+            ts_be.o.eq(0b11),
+            data_r.eq(Signal(dw//8)),
+            ts_be.oe.eq(data_oe)
+        ]
+        self.specials += ts_be.get_tristate(pads.be)
+
 
         # Read / Write FSM.
         # -----------------

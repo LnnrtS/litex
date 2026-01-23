@@ -62,28 +62,26 @@ class FT245PHYSynchronous(LiteXModule):
 
         # Read CDC/FIFO (FTDI --> SoC).
         # -----------------------------
+        self.read_fifo = stream.SyncFIFO(phy_description(dw), fifo_depth)
         self.read_cdc  = stream.ClockDomainCrossing(phy_description(dw),
             cd_from         = "usb",
             cd_to           = "sys",
             with_common_rst = True
         )
-        self.read_fifo = stream.SyncFIFO(phy_description(dw), fifo_depth)
-        self.comb += self.read_cdc.source.connect(self.read_fifo.sink)
-        self.comb += self.read_fifo.source.connect(self.source)
+        self.comb += self.read_fifo.source.connect(self.read_cdc.sink)
+        self.comb += self.read_cdc.source.connect(self.source)
         read_fifo_almost_full = (self.read_fifo.level > (fifo_depth - 4))
-        read_fifo_almost_full_usb = Signal()
-        self.specials += MultiReg(read_fifo_almost_full, read_fifo_almost_full_usb)
 
         # Write FIFO/CDC (SoC --> FTDI).
         # ------------------------------
-        self.write_fifo = stream.SyncFIFO(phy_description(dw), fifo_depth)
         self.write_cdc  = stream.ClockDomainCrossing(phy_description(dw),
             cd_from         = "sys",
             cd_to           = "usb",
             with_common_rst = True
         )
-        self.comb += self.sink.connect(self.write_fifo.sink)
-        self.comb += self.write_fifo.source.connect(self.write_cdc.sink)
+        self.write_fifo = stream.SyncFIFO(phy_description(dw), fifo_depth)
+        self.comb += self.sink.connect(self.write_cdc.sink)
+        self.comb += self.write_cdc.source.connect(self.write_fifo.sink)
 
         # Read / Write Anti-Starvation.
         # -----------------------------
@@ -95,8 +93,8 @@ class FT245PHYSynchronous(LiteXModule):
         self.wants_write = wants_write = Signal()
         self.wants_read  = wants_read  = Signal()
         self.comb += [
-            wants_write.eq(~pads.txe_n & self.write_cdc.source.valid),
-            wants_read.eq( ~pads.rxf_n & (self.read_cdc.sink.ready & ~read_fifo_almost_full_usb)),
+            wants_write.eq(~pads.txe_n & self.write_fifo.source.valid),
+            wants_read.eq( ~pads.rxf_n & (self.read_fifo.sink.ready & ~read_fifo_almost_full)),
         ]
 
         # Data Bus Tristate.
@@ -143,8 +141,8 @@ class FT245PHYSynchronous(LiteXModule):
 
             # Data
             pads.rd_n.eq(pads.oe_n | ~wants_read),
-            self.read_cdc.sink.valid.eq(~pads.rxf_n),
-            self.read_cdc.sink.data.eq(data_r)
+            self.read_fifo.sink.valid.eq(~pads.rxf_n),
+            self.read_fifo.sink.data.eq(data_r)
         )
         fsm.act("READ-TO-WRITE",
             NextState("WRITE")
@@ -164,8 +162,8 @@ class FT245PHYSynchronous(LiteXModule):
 
             # Data
             pads.wr_n.eq(~wants_write),
-            self.write_cdc.source.ready.eq(~pads.txe_n),
-            data_w.eq(self.write_cdc.source.data),
+            self.write_fifo.source.ready.eq(~pads.txe_n),
+            data_w.eq(self.write_fifo.source.data),
         )
         fsm.act("WRITE-TO-READ",
             NextState("READ")
@@ -193,7 +191,7 @@ class FT245PHYSynchronous(LiteXModule):
             self.fsm,
 
             # FIFOs.
-            self.write_cdc.source,
+            self.write_fifo.source,
             self.read_cdc.sink,
         ]
 

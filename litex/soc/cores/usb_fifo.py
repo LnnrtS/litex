@@ -127,6 +127,7 @@ class FT245PHYSynchronous(LiteXModule):
         fsm = FSM(reset_state="READ")
         fsm = ClockDomainsRenamer("usb")(fsm)
         self.fsm = fsm
+
         fsm.act("READ",
             # Arbitration.
             read_time_en.eq(1),
@@ -135,15 +136,16 @@ class FT245PHYSynchronous(LiteXModule):
                     NextState("READ-TO-WRITE")
                 )
             ),
-            # Control/Data-Path.
+            # Control
             data_oe.eq(0),
-            NextValue(pads.oe_n, ~wants_read),
-            NextValue(pads.rd_n, pads.oe_n | ~wants_read),
-            NextValue(pads.wr_n, 1),
-        )
-        self.comb += self.read_cdc.sink.data.eq(data_r)
-        self.sync.usb += self.read_cdc.sink.valid.eq(~pads.rd_n & ~pads.rxf_n)
+            pads.oe_n.eq(0),
+            pads.wr_n.eq(1),
 
+            # Data
+            pads.rd_n.eq(pads.oe_n | ~wants_read),
+            self.read_cdc.sink.valid.eq(~pads.rxf_n),
+            self.read_cdc.sink.data.eq(data_r)
+        )
         fsm.act("READ-TO-WRITE",
             NextState("WRITE")
         )
@@ -155,14 +157,15 @@ class FT245PHYSynchronous(LiteXModule):
                     NextState("WRITE-TO-READ")
                 )
             ),
-            # Control/Data-Path.
+            # Control
             data_oe.eq(1),
-            NextValue(pads.oe_n, 1),
-            NextValue(pads.rd_n, 1),
-            NextValue(pads.wr_n, ~wants_write),
-            #data_w.eq(write_fifo.source.data),
-            NextValue(data_w, self.write_cdc.source.data), # FIXME: Add 1 cycle delay.
-            self.write_cdc.source.ready.eq(wants_write),
+            pads.oe_n.eq(1),
+            pads.rd_n.eq(1),
+
+            # Data
+            pads.wr_n.eq(~wants_write),
+            self.write_cdc.source.ready.eq(~pads.txe_n),
+            data_w.eq(self.write_cdc.source.data),
         )
         fsm.act("WRITE-TO-READ",
             NextState("READ")
@@ -190,7 +193,7 @@ class FT245PHYSynchronous(LiteXModule):
             self.fsm,
 
             # FIFOs.
-            self.write_fifo.source,
+            self.write_cdc.source,
             self.read_cdc.sink,
         ]
 

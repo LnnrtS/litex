@@ -145,22 +145,24 @@ class XilinxVivadoToolchain(GenericToolchain):
 
     def __init__(self, device_image_arch=None):
         super().__init__()
-        self.bitstream_commands         = []
-        self.additional_commands        = []
-        self.project_commands           = XilinxVivadoCommands()
-        self.pre_synthesis_commands     = XilinxVivadoCommands()
-        self.pre_optimize_commands      = XilinxVivadoCommands()
-        self.pre_placement_commands     = XilinxVivadoCommands()
-        self.pre_routing_commands       = XilinxVivadoCommands()
-        self.incremental_implementation = False
-        self._synth_mode                = "vivado"
-        self._enable_xpm                = False
-        self._device_image_arch         = device_image_arch
+        self.bitstream_commands            = []
+        self.additional_commands           = []
+        self.additional_timing_constraints = []
+        self.project_commands              = XilinxVivadoCommands()
+        self.pre_synthesis_commands        = XilinxVivadoCommands()
+        self.pre_optimize_commands         = XilinxVivadoCommands()
+        self.pre_placement_commands        = XilinxVivadoCommands()
+        self.pre_routing_commands          = XilinxVivadoCommands()
+        self.incremental_implementation    = False
+        self._synth_mode                   = "vivado"
+        self._enable_xpm                   = False
+        self._device_image_arch            = device_image_arch
 
     def finalize(self):
         # Convert clocks and false path to platform commands
         self._build_clock_constraints()
         self._build_false_path_constraints()
+        self._build_timing_constraints()
 
     def build(self, platform, fragment,
         project_mode                         = True,
@@ -292,9 +294,14 @@ class XilinxVivadoToolchain(GenericToolchain):
         # Clear false path constraints after generation.
         self.false_paths.clear()
 
-    def build_timing_constraints(self, vns):
-        # FIXME: -> self ?
-        self._vns = vns
+    def add_timing_constraint(self, template, **signals):
+        self.additional_timing_constraints.append((template, signals))
+
+    def _build_timing_constraints(self):
+        self.platform.add_platform_command(_xdc_separator("Timing constraints"))
+        for constraint, signals in self.additional_timing_constraints:
+            self.platform.add_platform_command(constraint, **signals)
+
 
     # Project (.tcl) -------------------------------------------------------------------------------
 

@@ -461,12 +461,27 @@ class GenericPlatform:
         sc = self.constraint_manager.get_sig_constraints()
         named_sc = [(vns.get_name(sig), pins, others, resource)
                     for sig, pins, others, resource in sc]
+
         # Resolve signal names in platform commands.
         pc = self.constraint_manager.get_platform_commands()
         named_pc = []
-        for template, args in pc:
-            name_dict = dict((k, vns.get_name(sig)) for k, sig in args.items())
-            named_pc.append(template.format(**name_dict))
+        for template, signals in pc:
+
+            # Map signal names to internal signal names
+            name_dict = dict()
+            for key, signal in signals.items():
+                this_name = vns.get_name(signal)
+                if len(signal) > 1:
+                    this_name = this_name + "[*]"
+                name_dict[key] = this_name
+
+            # Instantiate template using key --> signal name
+            try:
+                named_pc.append(template.format(**name_dict))
+            except TypeError as e:
+                print(f"Cannot format template {template} with dict {name_dict}")
+                raise e
+
 
         return named_sc, named_pc
 

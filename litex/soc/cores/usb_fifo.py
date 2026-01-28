@@ -62,7 +62,7 @@ class FT245PHYSynchronous(LiteXModule):
 
         # Read CDC/FIFO (FTDI --> SoC).
         # -----------------------------
-        self.read_fifo = stream.SyncFIFO(phy_description(dw), fifo_depth)
+        self.read_fifo = ClockDomainsRenamer("usb")(stream.SyncFIFO(phy_description(dw), fifo_depth))
         self.read_cdc  = stream.ClockDomainCrossing(phy_description(dw),
             cd_from         = "usb",
             cd_to           = "sys",
@@ -79,7 +79,7 @@ class FT245PHYSynchronous(LiteXModule):
             cd_to           = "usb",
             with_common_rst = True
         )
-        self.write_fifo = stream.SyncFIFO(phy_description(dw), fifo_depth)
+        self.write_fifo = ClockDomainsRenamer("usb")(stream.SyncFIFO(phy_description(dw), fifo_depth))
         self.comb += self.sink.connect(self.write_cdc.sink)
         self.comb += self.write_cdc.source.connect(self.write_fifo.sink)
 

@@ -306,7 +306,16 @@ class XilinxVivadoToolchain(GenericToolchain):
             tcl.append(f"create_project -force -name {self._build_name} -part {self.platform.device}")
         else:
             tcl.append(f"set_part {self.platform.device}")
+
+        # Catch common errors
+
+        # Errors in tcl defintions
         tcl.append("set_msg_config -id {Common 17-55} -new_severity {Warning}")
+
+        # Errors in XDC defintions
+        tcl.append("set_msg_config -id {Vivado 12-627} -new_severity {ERROR}")
+        tcl.append("set_msg_config -id {Common 17-165} -new_severity {ERROR}")
+        
 
         if self.vivado_max_threads:
             tcl.append(f"set_param general.maxThreads {self.vivado_max_threads}")

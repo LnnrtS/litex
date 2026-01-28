@@ -173,6 +173,7 @@ class XilinxVivadoToolchain(GenericToolchain):
         vivado_route_directive               = "default",
         vivado_post_route_phys_opt_directive = "default",
         vivado_max_threads                   = None,
+        vivado_strict_timing                 = False,
         **kwargs):
 
         self._project_mode = project_mode
@@ -186,6 +187,7 @@ class XilinxVivadoToolchain(GenericToolchain):
         self.vivado_route_directive               = vivado_route_directive
         self.vivado_post_route_phys_opt_directive = vivado_post_route_phys_opt_directive
         self.vivado_max_threads                   = vivado_max_threads
+        self.vivado_strict_timing                 = vivado_strict_timing
 
         return GenericToolchain.build(self, platform, fragment, **kwargs)
 
@@ -315,7 +317,10 @@ class XilinxVivadoToolchain(GenericToolchain):
         # Errors in XDC defintions
         tcl.append("set_msg_config -id {Vivado 12-627} -new_severity {ERROR}")
         tcl.append("set_msg_config -id {Common 17-165} -new_severity {ERROR}")
-        
+
+        if self.vivado_strict_timing:
+            # Fail on any timing error
+            tcl.append("set_msg_config -id {Timing 38-282} -new_severity {ERROR}")
 
         if self.vivado_max_threads:
             tcl.append(f"set_param general.maxThreads {self.vivado_max_threads}")
@@ -440,7 +445,7 @@ class XilinxVivadoToolchain(GenericToolchain):
         tcl.append(f"phys_opt_design -directive {self.vivado_post_route_phys_opt_directive}")
         tcl.append(f"write_checkpoint -force {self._build_name}_route.dcp")
         tcl.append("\n# Routing report\n")
-        tcl.append("report_timing_summary -no_header -no_detailed_paths")
+        tcl.append("report_timing_summary -no_header -no_detailed_paths -warn_on_violation")
         tcl.append(f"report_route_status -file {self._build_name}_route_status.rpt")
         tcl.append(f"report_drc -file {self._build_name}_drc.rpt")
         tcl.append(f"report_timing_summary -datasheet -max_paths 10 -file {self._build_name}_timing.rpt")
@@ -520,15 +525,16 @@ def vivado_build_args(parser):
         raise ValueError(f"Invalid boolean: '{v}'")
 
     toolchain_group = parser.add_argument_group(title="Vivado toolchain options")
-    toolchain_group.add_argument("--project-mode",           type=boolean, default=True,      help="Project Mode.")
-    toolchain_group.add_argument("--synth-mode",                           default="vivado",  help="Synthesis mode (vivado or yosys).")
-    toolchain_group.add_argument("--vivado-synth-directive",               default="default", help="Specify synthesis directive.")
-    toolchain_group.add_argument("--vivado-opt-directive",                 default="default", help="Specify opt directive.")
-    toolchain_group.add_argument("--vivado-place-directive",               default="default", help="Specify place directive.")
-    toolchain_group.add_argument("--vivado-post-place-phys-opt-directive", default=None,      help="Specify phys opt directive.")
-    toolchain_group.add_argument("--vivado-route-directive",               default="default", help="Specify route directive.")
-    toolchain_group.add_argument("--vivado-post-route-phys-opt-directive", default="default", help="Specify phys opt directive.")
-    toolchain_group.add_argument("--vivado-max-threads",                   default=None,      help="Limit the max threads vivado is allowed to use.")
+    toolchain_group.add_argument("--project-mode",           type=boolean, default=True,        help="Project Mode.")
+    toolchain_group.add_argument("--synth-mode",                           default="vivado",    help="Synthesis mode (vivado or yosys).")
+    toolchain_group.add_argument("--vivado-synth-directive",               default="default",   help="Specify synthesis directive.")
+    toolchain_group.add_argument("--vivado-opt-directive",                 default="default",   help="Specify opt directive.")
+    toolchain_group.add_argument("--vivado-place-directive",               default="default",   help="Specify place directive.")
+    toolchain_group.add_argument("--vivado-post-place-phys-opt-directive", default=None,        help="Specify phys opt directive.")
+    toolchain_group.add_argument("--vivado-route-directive",               default="default",   help="Specify route directive.")
+    toolchain_group.add_argument("--vivado-post-route-phys-opt-directive", default="default",   help="Specify phys opt directive.")
+    toolchain_group.add_argument("--vivado-max-threads",                   default=None,        help="Limit the max threads vivado is allowed to use.")
+    toolchain_group.add_argument("--vivado-strict-timing",                 action="store_true", help="Fail on any timing violation.")
 
 def vivado_build_argdict(args):
     return {
@@ -540,5 +546,6 @@ def vivado_build_argdict(args):
         "vivado_post_place_phys_opt_directive" : args.vivado_post_place_phys_opt_directive,
         "vivado_route_directive"               : args.vivado_route_directive,
         "vivado_post_route_phys_opt_directive" : args.vivado_post_route_phys_opt_directive,
-        "vivado_max_threads"                   : args.vivado_max_threads
+        "vivado_max_threads"                   : args.vivado_max_threads,
+        "vivado_strict_timing"                 : args.vivado_strict_timing
     }

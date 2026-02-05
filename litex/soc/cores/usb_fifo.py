@@ -172,6 +172,40 @@ class FT245PHYSynchronous(LiteXModule):
         self.usb_clk = Signal()
         self.comb += self.usb_clk.eq(ClockSignal("usb"))
 
+    def set_timing_constraints(self, platform):
+        """
+        Set timing constraings according to FT600X datasheet
+        """
+
+        # platform.toolchain.add_timing_constraint(
+        #     "set_output_delay -max 7 -clock [get_clocks usb_fifo_clk] [get_ports {usb_fifo_wr_n}]",
+        #             usb_fifo_wr_n = self.pads.wr_n                    
+        #     )
+        # platform.toolchain.add_timing_constraint(
+        #     "set_output_delay -min 4.8 -clock [get_clocks usb_fifo_clk] [get_ports {usb_fifo_wr_n}]",
+        #             usb_fifo_wr_n = self.pads.wr_n                    
+        #     )
+
+        # platform.toolchain.add_timing_constraint(
+        #     "set_output_delay -max 7 -clock [get_clocks usb_fifo_clk] [get_ports {usb_fifo_data}]",
+        #            usb_fifo_data = self.pads.data                    
+        #     )
+
+        # platform.toolchain.add_timing_constraint(
+        #     "set_output_delay -min 4.8 -clock [get_clocks usb_fifo_clk] [get_ports {usb_fifo_data}]",
+        #            usb_fifo_data = self.pads.data                    
+        #     )
+
+        # platform.toolchain.add_timing_constraint(
+        #     "set_input_delay -max 7.0 -clock [get_clocks usb_fifo_clk] [get_ports {usb_fifo_txe_n}]",
+        #            usb_fifo_txe_n = self.pads.txe_n                    
+        #     )
+
+        # platform.toolchain.add_timing_constraint(
+        #     "set_input_delay -min 4.0 -clock [get_clocks usb_fifo_clk] [get_ports {usb_fifo_txe_n}]",
+        #            usb_fifo_txe_n = self.pads.txe_n                    
+        #     )
+
     def get_litescope_probes(self):
         return  [
             # Physical.

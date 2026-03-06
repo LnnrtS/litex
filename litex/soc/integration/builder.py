@@ -165,16 +165,27 @@ class Builder:
             csr_regions.update(_csr_regions)
         return csr_regions
 
-    def _get_variables_contents(self):
+    def _get_variables_contents(self, *, cmake=False):
         # Helper.
         variables_contents = []
-        def define(k, v):
-            k = k.replace("-", "_")
-            try:
-                variables_contents.append("{}={}".format(k, _makefile_escape(v)))
-            except AttributeError as e:
-                print(colorer(f"problem with {k}:", 'red'))
-                raise e
+
+        if not cmake:
+            def define(k, v):
+                k = k.replace("-", "_")
+                try:
+                    variables_contents.append("{}={}".format(k, _makefile_escape(v)))
+                except AttributeError as e:
+                    print(colorer(f"problem with {k}:", 'red'))
+                    raise e
+
+        else:
+            def define(k, v):
+                k = k.replace("-", "_")
+                try:
+                    variables_contents.append("set({} {})".format(k, _makefile_escape(v)))
+                except AttributeError as e:
+                    print(colorer(f"problem with {k}:", 'red'))
+                    raise e
 
         # Define packages and libraries.
         define("PACKAGES",     " ".join(name    for name, src_dir in self.software_packages))
@@ -184,6 +195,7 @@ class Builder:
         # Define CPU variables.
         for k, v in export.get_cpu_mak(self.soc.cpu, self.compile_software):
             define(k, v)
+            print(k,v)
 
         # Define SoC/Picolibc/Compiler-RT/Software/Include directories.
         picolibc_directory    = get_data_mod("software", "picolibc").data_location
@@ -193,7 +205,8 @@ class Builder:
         define("PICOLIBC_DIRECTORY",    picolibc_directory)
         define("PICOLIBC_FORMAT",       self.bios_format)
         define("COMPILER_RT_DIRECTORY", compiler_rt_directory)
-        variables_contents.append("export BUILDINC_DIRECTORY")
+        if not cmake:
+            variables_contents.append("export BUILDINC_DIRECTORY")
         define("BUILDINC_DIRECTORY", self.include_dir)
         for name, src_dir in self.software_packages:
             define(name.upper() + "_DIRECTORY", src_dir)
@@ -218,8 +231,8 @@ class Builder:
         # Generate BIOS files when the SoC uses it.
         if with_bios:
             # Generate Variables to variables.mak.
-            variables_contents = self._get_variables_contents()
-            write_to_file(os.path.join(self.generated_dir, "variables.mak"), variables_contents)
+            write_to_file(os.path.join(self.generated_dir, "variables.mak"), self._get_variables_contents(cmake=False))
+            write_to_file(os.path.join(self.generated_dir, "variables.cmake"), self._get_variables_contents(cmake=True))
 
             # Generate Output Format to output_format.ld.
             output_format_contents = export.get_linker_output_format(self.soc.cpu)
@@ -317,6 +330,7 @@ class Builder:
             _create_dir(os.path.join(self.software_dir, name))
 
     def _generate_rom_software(self, compile_bios=True):
+
         # Compile all software packages.
         cpu_count = os.cpu_count()
         for name, src_dir in self.software_packages:
@@ -327,6 +341,7 @@ class Builder:
             dst_dir  = os.path.join(self.software_dir, name)
             makefile = os.path.join(src_dir, "Makefile")
             if self.compile_software:
+                print(" ".join(["make", f"-j{cpu_count}", "-C", dst_dir, "-f", makefile]))
                 subprocess.check_call(["make", f"-j{cpu_count}", "-C", dst_dir, "-f", makefile])
 
     def _initialize_rom_software(self):
